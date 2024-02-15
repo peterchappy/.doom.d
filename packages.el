@@ -58,3 +58,10 @@
 (package! org-fancy-priorities)
 (package! move-text)
 (package! vue-mode)
+(package! company-box)
+;; Inside ~/.doom.d/packages.el
+
+(package! calfw
+  :recipe (:host github :repo "kiwanami/emacs-calfw"))
+
+(package! org-pomodoro)
