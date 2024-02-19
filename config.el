@@ -33,6 +33,7 @@
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
 (setq doom-theme 'doom-one)
+(setq doom-font (font-spec :family "Fira Code" :size 12))
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
@@ -43,7 +44,7 @@
 (setq org-directory "~/OrgMode/")
 
 (after! org
-  (setq org-agenda-files '("~/OrgMode" "~/OrgMode/work")))
+  (setq org-agenda-files (directory-files-recursively "~/OrgMode/" "\\.org$")))
 
 
 (setq projectile-project-search-path '("~/Code/"))
@@ -130,17 +131,90 @@
           (call-process "osascript" nil 0 nil "-e"
                         "display notification \"Ready for another Pomodoro?\" with title \"Long Break finished\""))))
 
-(setq org-agenda-custom-commands
-      '(("d" "Daily agenda and all TODOs"
-         ((agenda "" ((org-agenda-span 'day)))
-          (alltodo "")))))
-
 (defun org-summary-todo (n-done n-not-done)
   "Switch entry to DONE when all subentries are done, to TODO otherwise."
   (let (org-log-done org-log-states)   ; turn off logging
     (org-todo (if (= n-not-done 0) "DONE" "TODO"))))
 
 (add-hook 'org-after-todo-statistics-hook 'org-summary-todo)
+
+;; ORG MODE
+(after! org
+  (setq org-todo-keywords
+        '(
+          (sequence "TODO(t)" "NEXT(n)" "IN-PROGRESS(i)" "BLOCKED(b)" "|" "DONE(d)" "CANCELED(c)") ;; Work Related
+          (sequence "TO READ" "|" "READ" "MEETING" "NOTE") ;; Knowledge base related
+          )))
+
+(after! org
+  (setq org-todo-keyword-faces
+        '(("TODO" . (:foreground "yellow" :weight bold))
+          ("NEXT" . (:foreground "blue" :weight bold))
+          ("IN-PROGRESS" . (:foreground "orange" :weight bold))
+          ("BLOCKED" . (:foreground "magenta" :weight bold))
+          ("DONE" . (:foreground "green" :weight bold))
+          ("CANCELED" . (:foreground "grey" :weight bold)))))
+
+;; Keybindings for org-mode
+(map! :map org-mode-map
+      :localleader
+      (:prefix ("t" . "todo state")
+               "t" (cmd! (org-todo "TODO"))
+               "n" (cmd! (org-todo "NEXT"))
+               "i" (cmd! (org-todo "IN-PROGRESS"))
+               "b" (cmd! (org-todo "BLOCKED"))
+               "d" (cmd! (org-todo "DONE"))
+               "c" (cmd! (org-todo "CANCELED"))))
+
+;; Keybindings for org-agenda-mode
+(map! :map org-agenda-mode-map
+      :localleader
+      (:prefix ("t" . "todo state")
+               "t" (cmd! (org-agenda-todo "TODO"))
+               "n" (cmd! (org-agenda-todo "NEXT"))
+               "i" (cmd! (org-agenda-todo "IN-PROGRESS"))
+               "b" (cmd! (org-agenda-todo "BLOCKED"))
+               "d" (cmd! (org-agenda-todo "DONE"))
+               "c" (cmd! (org-agenda-todo "CANCELED"))))
+
+;; TEMPLATES
+(after! org
+  (setq org-capture-templates
+        '(("t" "Todo" entry (file "~/OrgMode/inbox.org")
+           "* TODO %?\n/Entered on/ %U"))))
+
+(after! org
+  (setq org-columns-default-format "%50ITEM(Task) %10CLOCKSUM %16TIMESTAMP_IA"))
+
+(setq org-log-done 'time)
+
+;; ORG-AGENDA
+(after! org
+  (setq org-agenda-custom-commands
+        '(("d" "Dashboard"
+           ((agenda "" ((org-agenda-span 1) ;; Completed in Last 72 Hours
+                        (org-agenda-start-day "-3d")
+                        (org-agenda-overriding-header "Completed in Last 72 Hours")
+                        (org-agenda-skip-function '(org-agenda-skip-entry-if 'notregexp "\\* DONE\\|CLOSED"))))
+            (agenda "" ((org-agenda-span 1) ;; Today
+                        (org-agenda-start-day "0d")
+                        (org-agenda-overriding-header "Today")))
+            (agenda "" ((org-agenda-span 1) ;; Tomorrow
+                        (org-agenda-start-day "+1d")
+                        (org-agenda-overriding-header "Tomorrow")))
+            (todo "NEXT" ((org-agenda-overriding-header "What's Next")))
+            (tags-todo "+CLOSED>=\"-3d\""
+                       ((org-agenda-overriding-header "Recently Completed")
+                        (org-agenda-skip-function '(org-agenda-skip-entry-if 'scheduled 'deadline))))
+            (tags-todo "+DEADLINE<=\"<+1w>\"&+DEADLINE>=\"<today>\"/!-SCHEDULED"
+                       ((org-agenda-overriding-header "What's Due Next")
+                        (org-agenda-sorting-strategy '(deadline-up))))
+            (todo "TODO" ((org-agenda-overriding-header "Inbox")
+                          (org-agenda-files '("~/OrgMode/inbox.org"))
+                          (org-agenda-skip-function '(org-agenda-skip-entry-if 'scheduled 'deadline))))
+            nil)))))
+
+
 
 
 (electric-indent-mode -1)
